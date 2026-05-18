@@ -60,10 +60,10 @@ app.MapGet("/api/vista", async (IConfiguration config) =>
     {
         return Results.Problem($"Error consultando SQL Server: {ex.Message}", statusCode: 500);
     }
-
+     
     return Results.Ok(rows);
 });
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
-
+// Estes es un comentario de prueba
 app.Run();
