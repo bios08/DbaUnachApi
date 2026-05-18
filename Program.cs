@@ -66,4 +66,5 @@ app.MapGet("/api/vista", async (IConfiguration config) =>
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 // Estes es un comentario de prueba
+// Mi segunda linea
 app.Run();
