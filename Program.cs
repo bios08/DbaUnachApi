@@ -35,8 +35,8 @@ app.MapGet("/api/vista", async (IConfiguration config) =>
         top = parsedTop;
     }
 
-    var sql = $"SELECT TOP ({top}) * FROM {viewName};";
-    var rows = new List<Dictionary<string, object?>>();
+    var sql = $"SELECT TOP ({top}) Rut, Nombre_carrera FROM {viewName};";
+    var rows = new List<MatriculadoDto>();
 
     try
     {
@@ -48,12 +48,11 @@ app.MapGet("/api/vista", async (IConfiguration config) =>
 
         while (await reader.ReadAsync())
         {
-            var row = new Dictionary<string, object?>(reader.FieldCount);
-            for (var i = 0; i < reader.FieldCount; i++)
+            rows.Add(new MatriculadoDto
             {
-                row[reader.GetName(i)] = await reader.IsDBNullAsync(i) ? null : reader.GetValue(i);
-            }
-            rows.Add(row);
+                Rut = await reader.IsDBNullAsync(0) ? null : reader.GetString(0),
+                Nombre_carrera = await reader.IsDBNullAsync(1) ? null : reader.GetString(1)
+            });
         }
     }
     catch (Exception ex)
