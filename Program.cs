@@ -1,44 +1,69 @@
+using Microsoft.Data.SqlClient;
+using System.Text.RegularExpressions;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
+app.MapGet("/api/vista", async (IConfiguration config) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    var connectionString = config.GetConnectionString("SqlServer");
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        return Results.Problem("No est? configurada ConnectionStrings:SqlServer", statusCode: 500);
+    }
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+    var viewName = config["ApiSettings:ViewName"] ?? "dbo.vw_TuVista";
+
+    if (!Regex.IsMatch(viewName, "^[A-Za-z0-9_\\.\\[\\]]+$"))
+    {
+        return Results.BadRequest("El nombre de la vista configurado no es v?lido.");
+    }
+
+    var top = 100;
+    if (int.TryParse(config["ApiSettings:Top"], out var parsedTop) && parsedTop > 0 && parsedTop <= 1000)
+    {
+        top = parsedTop;
+    }
+
+    var sql = $"SELECT TOP ({top}) * FROM {viewName};";
+    var rows = new List<Dictionary<string, object?>>();
+
+    try
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync();
+
+        await using var cmd = new SqlCommand(sql, conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+
+        while (await reader.ReadAsync())
+        {
+            var row = new Dictionary<string, object?>(reader.FieldCount);
+            for (var i = 0; i < reader.FieldCount; i++)
+            {
+                row[reader.GetName(i)] = await reader.IsDBNullAsync(i) ? null : reader.GetValue(i);
+            }
+            rows.Add(row);
+        }
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Error consultando SQL Server: {ex.Message}", statusCode: 500);
+    }
+
+    return Results.Ok(rows);
+});
+
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
