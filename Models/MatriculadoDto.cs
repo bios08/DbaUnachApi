@@ -8,6 +8,6 @@ public sealed record MatriculadoDto
     [JsonPropertyName("Nombre_carrera")]
     public string? Nombre_carrera { get; init; }
 
-    [JsonPropertyName("Estado_Academico")]
+    [JsonPropertyName("Estado Academico")]
     public string? Estado_Academico { get; init; }
 }
