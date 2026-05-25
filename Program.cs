@@ -14,6 +14,29 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// ── Middleware de API Key ──────────────────────────────────────────
+// Protege todos los endpoints /api/* con el header X-Api-Key
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api"))
+    {
+        var expectedKey = app.Configuration["ApiSettings:ApiKey"];
+        context.Request.Headers.TryGetValue("X-Api-Key", out var receivedKey);
+
+        if (string.IsNullOrWhiteSpace(receivedKey) || receivedKey != expectedKey)
+        {
+            context.Response.StatusCode = 401;
+            await context.Response.WriteAsJsonAsync(new
+            {
+                error = "No autorizado. Debes enviar un header X-Api-Key válido."
+            });
+            return;
+        }
+    }
+    await next();
+});
+// ─────────────────────────────────────────────────────────────────
+
 app.MapGet("/api/vista", async (IConfiguration config) =>
 {
     var connectionString = config.GetConnectionString("SqlServer");
