@@ -1,8 +1,14 @@
-.git/
+# Carpetas de compilación
 bin/
 obj/
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
 *.user
 *.suo
-.vs/
-.vscode/settings.json
-.vscode/desktop.ini
+
+# Windows — archivos de sistema
+desktop.ini
+Thumbs.db
+
