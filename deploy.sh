@@ -7,8 +7,8 @@
 
 set -e  # Si cualquier comando falla, detiene el script
 
-CONTAINER_NAME="UnachDbaApi"
-IMAGE_NAME="imageUnachDbaApi"
+CONTAINER_NAME="unach-dba-api"
+IMAGE_NAME="image-unach-dba-api"
 PORT="8081"
 
 echo "============================================"
