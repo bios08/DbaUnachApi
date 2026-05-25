@@ -37,19 +37,19 @@ app.Use(async (context, next) =>
 });
 // ─────────────────────────────────────────────────────────────────
 
-app.MapGet("/api/vista", async (IConfiguration config) =>
+app.MapGet("/api/vista", async (IConfiguration config, string? estado) =>
 {
     var connectionString = config.GetConnectionString("SqlServer");
     if (string.IsNullOrWhiteSpace(connectionString))
     {
-        return Results.Problem("No est? configurada ConnectionStrings:SqlServer", statusCode: 500);
+        return Results.Problem("No está configurada ConnectionStrings:SqlServer", statusCode: 500);
     }
 
     var viewName = config["ApiSettings:ViewName"] ?? "dbo.vw_TuVista";
 
     if (!Regex.IsMatch(viewName, "^[A-Za-z0-9_\\.\\[\\]]+$"))
     {
-        return Results.BadRequest("El nombre de la vista configurado no es v?lido.");
+        return Results.BadRequest("El nombre de la vista configurado no es válido.");
     }
 
     var top = 100;
@@ -58,7 +58,13 @@ app.MapGet("/api/vista", async (IConfiguration config) =>
         top = parsedTop;
     }
 
-    var sql = $"SELECT TOP ({top}) Rut, Nombre_carrera FROM {viewName};";
+    // Filtro opcional por Estado Academico (campo con espacio → corchetes en SQL)
+    var sql = $"SELECT TOP ({top}) Rut, Nombre_carrera, [Estado Academico] FROM {viewName}";
+    if (!string.IsNullOrWhiteSpace(estado))
+    {
+        sql += " WHERE [Estado Academico] = @estado";
+    }
+
     var rows = new List<MatriculadoDto>();
 
     try
@@ -67,14 +73,21 @@ app.MapGet("/api/vista", async (IConfiguration config) =>
         await conn.OpenAsync();
 
         await using var cmd = new SqlCommand(sql, conn);
+
+        if (!string.IsNullOrWhiteSpace(estado))
+        {
+            cmd.Parameters.AddWithValue("@estado", estado);
+        }
+
         await using var reader = await cmd.ExecuteReaderAsync();
 
         while (await reader.ReadAsync())
         {
             rows.Add(new MatriculadoDto
             {
-                Rut = await reader.IsDBNullAsync(0) ? null : reader.GetString(0),
-                Nombre_carrera = await reader.IsDBNullAsync(1) ? null : reader.GetString(1)
+                Rut            = await reader.IsDBNullAsync(0) ? null : reader.GetString(0),
+                Nombre_carrera = await reader.IsDBNullAsync(1) ? null : reader.GetString(1),
+                Estado_Academico = await reader.IsDBNullAsync(2) ? null : reader.GetString(2)
             });
         }
     }
@@ -82,7 +95,7 @@ app.MapGet("/api/vista", async (IConfiguration config) =>
     {
         return Results.Problem($"Error consultando SQL Server: {ex.Message}", statusCode: 500);
     }
-     
+
     return Results.Ok(rows);
 });
 
